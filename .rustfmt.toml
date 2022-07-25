@@ -1,0 +1,6 @@
+#brace_style = "PreferSameLine"
+max_width = 115
+group_imports = "StdExternalCrate"
+struct_field_align_threshold = 10
+use_field_init_shorthand = true
+control_brace_style = "ClosingNextLine"
