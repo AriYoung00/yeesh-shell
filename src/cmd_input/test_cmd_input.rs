@@ -5,6 +5,7 @@ mod cmd_input_tests {
     use derive_more::Display;
     use termion::event::Key;
 
+    use crate::fixture::raw_tty_emulator::RawTTYEmulator;
     use crate::CmdInput;
 
     #[derive(Display, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -34,16 +35,23 @@ mod cmd_input_tests {
         }
     }
 
+    #[cfg(test)]
+    fn insert_word(cmd: &mut CmdInput, word: &str) {
+        for c in word.chars() {
+            cmd.insert(Key::Char(c));
+        }
+    }
+
     #[test]
     fn test_render_line_single_word() {
         let mut cmd_input = CmdInput::new();
-        let mut out = StringWriter::new();
+        let mut out = RawTTYEmulator::new();
 
         // Check that a single word renders correctly
         for c in "hello".chars() {
             cmd_input.insert(Key::Char(c));
             cmd_input.render_line(&mut out, 0).unwrap();
         }
-        assert_eq!(out.string, "hello");
+        assert_eq!(String::from_iter(out.get_line()), "hello ");
     }
 }

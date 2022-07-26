@@ -93,10 +93,15 @@ impl RawTTYEmulator {
     }
 
     fn parse_numbers(input: &Vec<char>) -> Result<Vec<i64>, &'static str> {
-        let result = Vec::from_iter(String::from_iter(input).split(";").map(|x| {
-            i64::from_str(x).expect(format!("Unable to parse expected numeric string: \"{}\"", x).as_str())
-        }));
-        Ok(result)
+        if !input.is_empty() {
+            let result = Vec::from_iter(String::from_iter(input).split(";").map(|x| {
+                i64::from_str(x).expect(format!("Unable to parse expected numeric string: \"{}\"", x).as_str())
+            }));
+            Ok(result)
+        }
+        else {
+            Ok(vec![])
+        }
     }
 
     fn extend_to_match_pos(&mut self) {
@@ -117,7 +122,7 @@ impl RawTTYEmulator {
             if c_chr == '[' {
                 is_gathering_for_num = true;
             }
-            else if ('0' <= c_chr && c_chr <= '9') && is_gathering_for_num {
+            else if is_gathering_for_num && (('0' <= c_chr && c_chr <= '9') || c_chr == ';') {
                 num_buf.push(c_chr);
             }
             else {
@@ -130,7 +135,7 @@ impl RawTTYEmulator {
         let (arg_x, arg_y) = match nums.len() {
             0 => (1, 1),
             1 => (nums[0] as usize, nums[0] as usize),
-            _ => (nums[0] as usize, nums[1] as usize),
+            _ => (nums[1] as usize, nums[0] as usize),
         };
 
         match seq_type {
@@ -169,11 +174,17 @@ impl IoWriteAlias for RawTTYEmulator {
                     };
                 }
                 _ => {
-                    self.text[self.cursor_pos.1].insert(self.cursor_pos.0, *c as char);
+                    if self.cursor_pos.0 < self.text[self.cursor_pos.1].len() {
+                        self.text[self.cursor_pos.1][self.cursor_pos.0] = *c as char;
+                    }
+                    else {
+                        self.text[self.cursor_pos.1].push(*c as char);
+                    }
                     self.cursor_pos.0 += 1;
                 }
             }
         }
+        self.extend_to_match_pos();
         Ok(0)
     }
 
