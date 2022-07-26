@@ -1,8 +1,41 @@
 use std::io;
+use std::io::Write;
 
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::{clear, cursor};
+
+macro_rules! format_u8 {
+    ($($arg:tt)*) => {{
+        format!($($arg)*).as_bytes()
+    }};
+}
+
+pub trait DetectCursorPosAlias {
+    fn get_cursor_pos(&mut self) -> (usize, usize);
+}
+
+impl<W: Write + DetectCursorPos> DetectCursorPosAlias for W {
+    fn get_cursor_pos(&mut self) -> (usize, usize) {
+        let pos = self.cursor_pos().expect("Unable to detect cursor position");
+        (pos.0 as usize, pos.1 as usize)
+    }
+}
+
+pub trait IoWriteAlias {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize>;
+    fn flush(&mut self) -> io::Result<()>;
+}
+
+impl<W: Write + DetectCursorPos> IoWriteAlias for W {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.write(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.flush()
+    }
+}
 
 pub struct CmdInput {
     input: Vec<char>,
@@ -33,10 +66,9 @@ impl CmdInput {
 
     pub fn render_line<T>(&mut self, out: &mut T, prompt_len: usize) -> io::Result<()>
     where
-        T: io::Write,
+        T: IoWriteAlias + DetectCursorPosAlias,
     {
-        let cursor_pos = out.cursor_pos().unwrap();
-        let (cursor_pos_x, cursor_pos_y) = (cursor_pos.0 as usize, cursor_pos.1 as usize);
+        let (cursor_pos_x, cursor_pos_y) = out.get_cursor_pos();
         let new_cursor_pos_x = if cursor_pos_x != self.index + prompt_len {
             self.index + prompt_len
         }
@@ -44,26 +76,27 @@ impl CmdInput {
             cursor_pos_x
         };
 
-        write!(out, "{}", cursor::Goto(new_cursor_pos_x as u16, cursor_pos_y as u16))?;
+        out.write(format_u8!(
+            "{}",
+            cursor::Goto(new_cursor_pos_x as u16, cursor_pos_y as u16)
+        ))?;
 
         if self.index > 0 {
-            write!(out, "{}", String::from_iter(self.input[self.index - 1..].iter()))?;
+            out.write(format_u8!("{}", String::from_iter(self.input[self.index - 1..].iter())))?;
         }
         else {
-            write!(out, "{}", String::from_iter(self.input.iter()))?;
+            out.write(format_u8!("{}", String::from_iter(self.input.iter())))?;
         }
 
         if cursor_pos_x < self.prev_cursor_pos_x {
-            write!(out, "{}", cursor::Goto(cursor_pos_x as u16, cursor_pos_y as u16))?;
-            write!(out, "{}", clear::AfterCursor)?;
-            out.flush()?;
+            out.write(format_u8!("{}", cursor::Goto(cursor_pos_x as u16, cursor_pos_y as u16)))?;
+            out.write(format_u8!("{}", clear::AfterCursor))?;
         }
 
-        write!(
-            out,
+        out.write(format_u8!(
             "{}",
             cursor::Goto(new_cursor_pos_x as u16 + 1, cursor_pos_y as u16)
-        )?;
+        ))?;
         self.prev_cursor_pos_x = new_cursor_pos_x + 1;
         Ok(())
     }
