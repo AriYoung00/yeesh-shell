@@ -40,7 +40,18 @@ impl<W: Write + DetectCursorPos> IoWriteAlias for W {
 pub struct CmdInput {
     input: Vec<char>,
     index: usize,
+    previous_render: Vec<char>,
     prev_cursor_pos_x: usize,
+    last_key_was_motion: bool,
+}
+
+#[inline]
+fn goto_pos<T>(out: &mut T, x: usize, y: usize) -> io::Result<()>
+where
+    T: IoWriteAlias + DetectCursorPosAlias,
+{
+    out.write(cursor::Goto(x as u16, y as u16).to_string().as_bytes())?;
+    Ok(())
 }
 
 impl CmdInput {
@@ -48,7 +59,9 @@ impl CmdInput {
         CmdInput {
             input: vec![],
             index: 0,
+            previous_render: vec![],
             prev_cursor_pos_x: 0,
+            last_key_was_motion: false,
         }
     }
 
@@ -68,36 +81,24 @@ impl CmdInput {
     where
         T: IoWriteAlias + DetectCursorPosAlias,
     {
-        let (cursor_pos_x, cursor_pos_y) = out.get_cursor_pos();
-        let new_cursor_pos_x = if cursor_pos_x != self.index + prompt_len {
-            self.index + prompt_len
-        }
-        else {
-            cursor_pos_x
-        };
+        let mut buf = vec![];
+        let cursor_pos = out.get_cursor_pos();
+        buf.reserve(self.input.len() + 10);
+        buf.extend_from_slice(format_u8!(
+            "{}{}{}",
+            cursor::Hide,
+            cursor::Goto(prompt_len as u16 + 1, cursor_pos.1 as u16),
+            clear::AfterCursor,
+        ));
+        buf.extend_from_slice(self.input.iter().map(|x| *x as u8).collect::<Vec<u8>>().as_slice());
+        buf.extend_from_slice(format_u8!(
+            "{}{}{}",
+            cursor::Goto((prompt_len + self.index + 1) as u16, cursor_pos.1 as u16),
+            cursor::Show,
+            cursor::Goto((prompt_len + self.index + 1) as u16, cursor_pos.1 as u16),
+        ));
 
-        out.write(format_u8!(
-            "{}",
-            cursor::Goto(new_cursor_pos_x as u16, cursor_pos_y as u16)
-        ))?;
-
-        if self.index > 0 {
-            out.write(format_u8!("{}", String::from_iter(self.input[self.index - 1..].iter())))?;
-        }
-        else {
-            out.write(format_u8!("{}", String::from_iter(self.input.iter())))?;
-        }
-
-        if cursor_pos_x < self.prev_cursor_pos_x {
-            out.write(format_u8!("{}", cursor::Goto(cursor_pos_x as u16, cursor_pos_y as u16)))?;
-            out.write(format_u8!("{}", clear::AfterCursor))?;
-        }
-
-        out.write(format_u8!(
-            "{}",
-            cursor::Goto(new_cursor_pos_x as u16 + 1, cursor_pos_y as u16)
-        ))?;
-        self.prev_cursor_pos_x = new_cursor_pos_x + 1;
+        out.write(&buf)?;
         Ok(())
     }
 
@@ -106,23 +107,29 @@ impl CmdInput {
             Key::Char(c) => {
                 self.input.insert(self.index, c);
                 self.index += 1;
-                // print!("{}", c);
+                if self.index > self.input.len() {
+                    self.input.push(' ');
+                }
+                self.last_key_was_motion = false;
             }
             Key::Backspace => {
-                if self.index != 0 {
+                if self.index > 0 {
                     self.index -= 1;
                     self.input.remove(self.index);
                 }
+                self.last_key_was_motion = false;
             }
             Key::Left => {
                 if self.index != 0 {
                     self.index -= 1;
                 }
+                self.last_key_was_motion = true;
             }
             Key::Right => {
                 if self.index != self.input.len() {
                     self.index += 1;
                 }
+                self.last_key_was_motion = true;
             }
             _ => {}
         }
@@ -137,19 +144,31 @@ impl CmdInput {
         let mut cmd_args = vec![];
         let mut current_arg = vec![];
         let mut is_quoted = false;
+        let mut quote_char = '\'';
 
+        // TODO: match quotes -- this would currently be a valid quoted string: "hello'
         for c in self.input.iter() {
             match c {
                 ' ' if !is_quoted => {
-                    cmd_args.push(String::from_iter(current_arg.iter()));
+                    if self.input.len() > 1 {
+                        cmd_args.push(String::from_iter(current_arg.iter()));
+                    }
                     current_arg.clear();
                 }
-                '"' | '\'' => is_quoted = !is_quoted,
+                '"' | '\'' if !is_quoted => {
+                    is_quoted = true;
+                    quote_char = *c;
+                }
+                '"' | '\'' if is_quoted && *c == quote_char => {
+                    is_quoted = false;
+                }
                 _ => current_arg.push(*c),
             }
         }
 
-        cmd_args.push(String::from_iter(current_arg.iter()));
+        if self.input.len() > 1 {
+            cmd_args.push(String::from_iter(current_arg.iter()));
+        }
         cmd_args
     }
 }

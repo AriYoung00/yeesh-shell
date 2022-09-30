@@ -1,17 +1,23 @@
 #![feature(let_chains)]
 #![allow(dead_code)]
 #![allow(unused_macros)]
-
+#![allow(non_camel_case_types)]
 extern crate core;
 
 mod cmd_input;
 mod fixture;
+mod intrinsics;
+mod prompt;
 
+use std::env;
 use std::io;
-use std::io::{stdin, stdout, Write};
+use std::io::{stderr, stdin, stdout, Write};
 use std::os::unix::process::ExitStatusExt;
+use std::path::Path;
 use std::process::{Child, Command, ExitStatus};
 
+use intrinsics::{find_intrinsic, Intrinsic};
+use prompt::print_prompt;
 use termion::color;
 use termion::cursor;
 use termion::cursor::DetectCursorPos;
@@ -31,25 +37,23 @@ fn dispatch_command(cmd_args: Vec<String>) -> io::Result<Child> {
         .spawn()
 }
 
-fn print_prompt<T>(status: &ExitStatus, out: &mut T) -> io::Result<usize>
-where
-    T: Write,
-{
-    const PROMPT: &str = "> ";
-    if status.success() {
-        write!(out, "{}", color::Fg(color::Green))?;
+fn handle_cd(cmd_args: &[String]) -> io::Result<ExitStatus> {
+    if cmd_args.len() == 0 {
+        let mut path = Path::new("~");
+        env::set_current_dir(&path)?;
     }
     else {
-        write!(out, "{}", color::Fg(color::Red))?;
+        match cmd_args[0].chars().nth(0).unwrap() {
+            '/' | '~' => env::set_current_dir(&cmd_args[0])?,
+            _ => {
+                let mut path = env::current_dir()?;
+                path.push(cmd_args[0].as_str());
+                env::set_current_dir(&path)?;
+            }
+        }
     }
 
-    let mut stdout_lock = stdout().lock();
-    let current_pos = stdout_lock.cursor_pos().unwrap();
-
-    write!(out, "{}", cursor::Goto(1, current_pos.1 + 1))?;
-    write!(out, "{}", PROMPT)?;
-    write!(out, "{}", color::Fg(color::Reset))?;
-    Ok(PROMPT.len())
+    Ok(ExitStatus::from_raw(0))
 }
 
 fn main() {
@@ -69,11 +73,28 @@ fn main() {
                 Key::Char('\n') => {
                     write!(stdout, "\r\n").unwrap();
                     let cmd_args = cmd_input.get_cmd();
-                    if !cmd_args.is_empty() {
-                        if cmd_args[0] == "exit" {
+                    if !cmd_args.is_empty() && let Some(intrinsic) = find_intrinsic(&cmd_args[0]) {
+                        if cmd_args.len() == 2 && (cmd_args[1] == "--help" || cmd_args[1] == "-h") {
+                            println!("{}\r", intrinsic.description);
+                            status = ExitStatus::from_raw(0);
+                        }
+                        else {
+                            match (intrinsic.handler)(&cmd_args[1..]) {
+                                Ok(output) => {
+                                    write!(stdout, "{}", output).unwrap();
+                                    status = ExitStatus::from_raw(0);
+                                }
+                                Err(err) => {
+                                    write!(stderr(), "{}", err).unwrap();
+                                    status = ExitStatus::from_raw(1);
+                                }
+                            }
+                        }
+                        if intrinsic.command == "exit" {
                             break;
                         }
-
+                    }
+                    else if !cmd_args.is_empty() {
                         stdout.suspend_raw_mode().unwrap();
                         if let Ok(mut child) = dispatch_command(cmd_args)
                             && let Ok(exit_status) = child.wait() {
@@ -83,9 +104,10 @@ fn main() {
                             status = ExitStatus::from_raw(1);
                         }
                         stdout.activate_raw_mode().unwrap();
-                        cmd_input.clear();
-                        prompt_len = print_prompt(&status, &mut stdout).unwrap();
                     }
+
+                    cmd_input.clear();
+                    prompt_len = print_prompt(&status, &mut stdout).unwrap();
                 }
                 _ => {
                     cmd_input.insert(val);

@@ -12,6 +12,8 @@ enum EscapeType {
     DOWN,
     LEFT,
     RIGHT,
+    CLEAR_AFTER_CURSOR,
+    IGNORE,
     UNKNOWN,
 }
 
@@ -23,6 +25,8 @@ impl From<u8> for EscapeType {
             b'B' => Self::DOWN,
             b'C' => Self::RIGHT,
             b'D' => Self::LEFT,
+            b'J' => Self::CLEAR_AFTER_CURSOR,
+            b'?' => Self::IGNORE,
             _ => Self::UNKNOWN,
         }
     }
@@ -145,6 +149,16 @@ impl RawTTYEmulator {
             EscapeType::DOWN => self.cursor_pos += (0, arg_y),
             // we subtract (1, 1) to account for the fact that cursor::Goto is 1-indexed
             EscapeType::HOME => self.cursor_pos = CursorPos(arg_x - 1, arg_y - 1),
+            EscapeType::CLEAR_AFTER_CURSOR => {
+                self.text[self.cursor_pos.1].drain(self.cursor_pos.0..);
+            }
+            EscapeType::IGNORE => {
+                while let Some(c) = buf_iter.next() {
+                    if *c == b'l' || *c == b'h' {
+                        break;
+                    }
+                }
+            }
             EscapeType::UNKNOWN => return Err("unknown escape sequence"),
         };
         self.extend_to_match_pos();
