@@ -2,8 +2,7 @@ use std::io;
 use std::io::Write;
 use std::process::ExitStatus;
 
-use termion::cursor::DetectCursorPos;
-use termion::{color, cursor};
+use termion::color;
 
 pub fn print_prompt<T>(status: &ExitStatus, out: &mut T) -> io::Result<usize>
 where

@@ -3,7 +3,7 @@ mod test_intrinsic {
     use std::env;
 
     use crate::intrinsics::INTRINSICS;
-    use crate::{find_intrinsic, Intrinsic};
+    use crate::find_intrinsic;
 
     #[test]
     fn test_find_intrinsic() {

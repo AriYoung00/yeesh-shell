@@ -4,6 +4,8 @@ use std::io::Write;
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::{clear, cursor};
+use crate::cmd_input::TabHandler;
+use crate::cmd_input::token::Token;
 
 macro_rules! format_u8 {
     ($($arg:tt)*) => {{

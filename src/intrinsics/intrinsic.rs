@@ -1,9 +1,5 @@
 use std::env;
-use std::error::Error;
 use std::fmt::{Debug, Formatter};
-use std::io::Write;
-use std::os::unix::process::ExitStatusExt;
-use std::process::ExitStatus;
 
 pub struct Intrinsic {
     pub command:     &'static str,

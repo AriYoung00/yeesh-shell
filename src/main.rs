@@ -16,11 +16,9 @@ use std::os::unix::process::ExitStatusExt;
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus};
 
-use intrinsics::{find_intrinsic, Intrinsic};
+use intrinsics::find_intrinsic;
 use prompt::print_prompt;
 use termion::color;
-use termion::cursor;
-use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
@@ -39,7 +37,7 @@ fn dispatch_command(cmd_args: Vec<String>) -> io::Result<Child> {
 
 fn handle_cd(cmd_args: &[String]) -> io::Result<ExitStatus> {
     if cmd_args.len() == 0 {
-        let mut path = Path::new("~");
+        let path = Path::new("~");
         env::set_current_dir(&path)?;
     }
     else {
