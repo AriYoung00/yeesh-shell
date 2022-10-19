@@ -45,6 +45,8 @@ pub struct CmdInput {
     previous_render: Vec<char>,
     prev_cursor_pos_x: usize,
     last_key_was_motion: bool,
+
+    tab_handler: TabHandler,
 }
 
 #[inline]
@@ -64,6 +66,8 @@ impl CmdInput {
             previous_render: vec![],
             prev_cursor_pos_x: 0,
             last_key_was_motion: false,
+
+            tab_handler: TabHandler::new()
         }
     }
 
@@ -94,8 +98,8 @@ impl CmdInput {
         ));
         buf.extend_from_slice(self.input.iter().map(|x| *x as u8).collect::<Vec<u8>>().as_slice());
         buf.extend_from_slice(format_u8!(
-            "{}{}{}",
-            cursor::Goto((prompt_len + self.index + 1) as u16, cursor_pos.1 as u16),
+            "{}{}", // "{}{}{}",
+            // cursor::Goto((prompt_len + self.index + 1) as u16, cursor_pos.1 as u16),
             cursor::Show,
             cursor::Goto((prompt_len + self.index + 1) as u16, cursor_pos.1 as u16),
         ));
@@ -106,6 +110,16 @@ impl CmdInput {
 
     pub fn insert(&mut self, key: Key) {
         match key {
+            Key::Char('\t') => {
+                let mut tokens = Token::parse_input(&self.input, self.index);
+                let active_token = tokens.iter_mut().find(|t| t.get_is_active());
+
+                if let Some(token) = active_token {
+                    if let Some(suggestion) = self.tab_handler.get_suggestion(&token.contents) {
+                        token.contents = suggestion;
+                    }
+                }
+            }
             Key::Char(c) => {
                 self.input.insert(self.index, c);
                 self.index += 1;
@@ -143,34 +157,14 @@ impl CmdInput {
     }
 
     pub fn get_cmd(&self) -> Vec<String> {
-        let mut cmd_args = vec![];
-        let mut current_arg = vec![];
-        let mut is_quoted = false;
-        let mut quote_char = '\'';
-
-        // TODO: match quotes -- this would currently be a valid quoted string: "hello'
-        for c in self.input.iter() {
-            match c {
-                ' ' if !is_quoted => {
-                    if self.input.len() > 1 {
-                        cmd_args.push(String::from_iter(current_arg.iter()));
-                    }
-                    current_arg.clear();
-                }
-                '"' | '\'' if !is_quoted => {
-                    is_quoted = true;
-                    quote_char = *c;
-                }
-                '"' | '\'' if is_quoted && *c == quote_char => {
-                    is_quoted = false;
-                }
-                _ => current_arg.push(*c),
-            }
+        let mut res = vec![];
+        let tokens = Token::parse_input(&self.input, self.index);
+        res.reserve(tokens.len());
+        for t in tokens {
+            res.push(t.contents);
         }
 
-        if self.input.len() > 1 {
-            cmd_args.push(String::from_iter(current_arg.iter()));
-        }
-        cmd_args
+        // println!("returning command: '{:?}'", res);
+        res
     }
 }
