@@ -1,10 +1,12 @@
 #![feature(let_chains)]
+#![feature(iter_intersperse)]
 #![allow(dead_code)]
 #![allow(unused_macros)]
 #![allow(non_camel_case_types)]
 extern crate core;
 
 mod cmd_input;
+mod error;
 mod fixture;
 mod intrinsics;
 mod prompt;
