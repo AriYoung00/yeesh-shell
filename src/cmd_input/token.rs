@@ -1,19 +1,30 @@
 #[derive(Clone, Debug)]
 pub struct Token {
     pub contents: String,
-    is_quoted: bool,
-    quote_char: char,
-    is_active: bool
+    is_quoted:    bool,
+    quote_char:   char,
+
+    start_pos: usize,
+    end_pos:   usize,
 }
 
 impl Token {
-    pub fn parse_input(input: &Vec<char>, cursor_pos: usize) -> Vec<Token> {
+    pub fn new(contents: String, is_quoted: bool, quote_char: char, start_pos: usize, end_pos: usize) -> Self {
+        Token {
+            contents,
+            is_quoted,
+            quote_char,
+            start_pos,
+            end_pos,
+        }
+    }
+
+    pub fn parse_input(input: &Vec<char>) -> Vec<Token> {
         let mut current_arg = vec![];
         let mut is_quoted = false;
         let mut was_quoted = false;
         let mut quote_char = '\'';
         let mut start_pos = 0_usize;
-        let mut found_active = false;
 
         let mut tokens = vec![];
         for (idx, c) in input.iter().enumerate() {
@@ -24,12 +35,13 @@ impl Token {
                             contents: String::from_iter(current_arg.iter()),
                             is_quoted: was_quoted,
                             quote_char,
-                            is_active: cursor_pos >= start_pos && !found_active
+                            start_pos,
+                            end_pos: idx,
                         });
-                        found_active = cursor_pos >= start_pos;
                     }
                     start_pos = idx + 1;
-                    current_arg.clear()
+                    current_arg.clear();
+                    was_quoted = false;
                 }
                 '"' | '\'' if !is_quoted => {
                     is_quoted = true;
@@ -48,7 +60,8 @@ impl Token {
                 contents: String::from_iter(current_arg.iter()),
                 is_quoted: was_quoted,
                 quote_char,
-                is_active: cursor_pos >= start_pos && !found_active
+                start_pos,
+                end_pos: input.len() - 1,
             });
         }
         // println!("Tokens: {:?}", tokens);
@@ -57,12 +70,13 @@ impl Token {
     }
 
     pub fn assemble_tokens(tokens: &Vec<Token>) -> Vec<char> {
-        let mut output_chars = vec![];
-        tokens.iter()
+        tokens
+            .iter()
             .map(|t| t.get_assembled())
-            .for_each(|s| output_chars.extend(s.chars()));
-
-        output_chars
+            .intersperse(" ".to_string())
+            .collect::<String>()
+            .chars()
+            .collect()
     }
 
     pub fn get_assembled(&self) -> String {
@@ -74,7 +88,19 @@ impl Token {
         }
     }
 
-    pub fn get_is_active(&self) -> bool {
-        self.is_active
+    pub fn get_is_quoted(&self) -> bool {
+        self.is_quoted
+    }
+
+    pub fn get_quote_char(&self) -> char {
+        self.quote_char
+    }
+
+    pub fn get_start_pos(&self) -> usize {
+        self.start_pos
+    }
+
+    pub fn get_end_pos(&self) -> usize {
+        self.end_pos
     }
 }
