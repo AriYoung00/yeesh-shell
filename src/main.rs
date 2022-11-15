@@ -1,5 +1,6 @@
 #![feature(let_chains)]
 #![feature(iter_intersperse)]
+#![feature(is_some_and)]
 #![allow(dead_code)]
 #![allow(unused_macros)]
 #![allow(non_camel_case_types)]
@@ -24,6 +25,7 @@ use termion::color;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
+use vfs::PhysicalFS;
 
 use crate::cmd_input::CmdInput;
 
@@ -62,7 +64,8 @@ fn main() {
     // write!(stdout, "{}", termion::clear::All).unwrap();
     write!(stdout, "\r\n{}Hello, world!\r\n", color::Fg(color::Red)).unwrap();
 
-    let mut cmd_input = CmdInput::new();
+    let filesystem = PhysicalFS::new("/");
+    let mut cmd_input = CmdInput::new(&filesystem);
     let mut status = ExitStatus::from_raw(0);
     let mut prompt_len: usize = print_prompt(&status, &mut stdout).unwrap();
     stdout.flush().unwrap();

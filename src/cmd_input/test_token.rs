@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod test_token {
+mod token_tests {
     use crate::cmd_input::token::Token;
 
     fn setup() {}

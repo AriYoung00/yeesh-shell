@@ -4,8 +4,10 @@ use std::io::Write;
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::{clear, cursor};
-use crate::cmd_input::TabHandler;
+use vfs::FileSystem;
+
 use crate::cmd_input::token::Token;
+use crate::cmd_input::TabHandler;
 
 macro_rules! format_u8 {
     ($($arg:tt)*) => {{
@@ -58,8 +60,8 @@ where
     Ok(())
 }
 
-impl CmdInput {
-    pub fn new() -> CmdInput {
+impl<'a, T: FileSystem> CmdInput<'a, T> {
+    pub fn new(file_system: &T) -> CmdInput<T> {
         CmdInput {
             input: vec![],
             index: 0,
@@ -67,7 +69,7 @@ impl CmdInput {
             prev_cursor_pos_x: 0,
             last_key_was_motion: false,
 
-            tab_handler: TabHandler::new()
+            tab_handler: TabHandler::new(file_system),
         }
     }
 
@@ -83,9 +85,9 @@ impl CmdInput {
         (&self.input, self.index)
     }
 
-    pub fn render_line<T>(&mut self, out: &mut T, prompt_len: usize) -> io::Result<()>
+    pub fn render_line<U>(&mut self, out: &mut U, prompt_len: usize) -> io::Result<()>
     where
-        T: IoWriteAlias + DetectCursorPosAlias,
+        U: IoWriteAlias + DetectCursorPosAlias,
     {
         let mut buf = vec![];
         let cursor_pos = out.get_cursor_pos();
@@ -98,8 +100,8 @@ impl CmdInput {
         ));
         buf.extend_from_slice(self.input.iter().map(|x| *x as u8).collect::<Vec<u8>>().as_slice());
         buf.extend_from_slice(format_u8!(
-            "{}{}", // "{}{}{}",
-            // cursor::Goto((prompt_len + self.index + 1) as u16, cursor_pos.1 as u16),
+            "{}{}{}",
+            cursor::Goto((prompt_len + self.index + 1) as u16, cursor_pos.1 as u16),
             cursor::Show,
             cursor::Goto((prompt_len + self.index + 1) as u16, cursor_pos.1 as u16),
         ));
@@ -111,8 +113,10 @@ impl CmdInput {
     pub fn insert(&mut self, key: Key) {
         match key {
             Key::Char('\t') => {
-                let mut tokens = Token::parse_input(&self.input, self.index);
-                let active_token = tokens.iter_mut().find(|t| t.get_is_active());
+                let mut tokens = Token::parse_input(&self.input);
+                let active_token = tokens
+                    .iter_mut()
+                    .find(|t| t.get_end_pos() <= self.index && t.get_end_pos() >= self.index);
 
                 if let Some(token) = active_token {
                     if let Some(suggestion) = self.tab_handler.get_suggestion(&token.contents) {
@@ -120,6 +124,7 @@ impl CmdInput {
                     }
                 }
             }
+
             Key::Char(c) => {
                 self.input.insert(self.index, c);
                 self.index += 1;
@@ -158,13 +163,15 @@ impl CmdInput {
 
     pub fn get_cmd(&self) -> Vec<String> {
         let mut res = vec![];
-        let tokens = Token::parse_input(&self.input, self.index);
+        let tokens = Token::parse_input(&self.input);
         res.reserve(tokens.len());
         for t in tokens {
             res.push(t.contents);
         }
 
-        // println!("returning command: '{:?}'", res);
-        res
+        if self.input.len() > 1 {
+            cmd_args.push(String::from_iter(current_arg.iter()));
+        }
+        cmd_args
     }
 }
