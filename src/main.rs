@@ -19,13 +19,13 @@ use std::os::unix::process::ExitStatusExt;
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus};
 
+use filesystem::OsFileSystem;
 use intrinsics::find_intrinsic;
 use prompt::print_prompt;
 use termion::color;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
-use vfs::PhysicalFS;
 
 use crate::cmd_input::CmdInput;
 
@@ -64,8 +64,9 @@ fn main() {
     // write!(stdout, "{}", termion::clear::All).unwrap();
     write!(stdout, "\r\n{}Hello, world!\r\n", color::Fg(color::Red)).unwrap();
 
-    let filesystem = PhysicalFS::new("/");
-    let mut cmd_input = CmdInput::new(&filesystem);
+    let filesystem = OsFileSystem::new();
+
+    let mut cmd_input = CmdInput::new();
     let mut status = ExitStatus::from_raw(0);
     let mut prompt_len: usize = print_prompt(&status, &mut stdout).unwrap();
     stdout.flush().unwrap();

@@ -4,7 +4,6 @@ use std::io::Write;
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::{clear, cursor};
-use vfs::FileSystem;
 
 use crate::cmd_input::token::Token;
 use crate::cmd_input::TabHandler;
@@ -60,8 +59,8 @@ where
     Ok(())
 }
 
-impl<'a, T: FileSystem> CmdInput<'a, T> {
-    pub fn new(file_system: &T) -> CmdInput<T> {
+impl CmdInput {
+    pub fn new() -> CmdInput {
         CmdInput {
             input: vec![],
             index: 0,
@@ -69,7 +68,7 @@ impl<'a, T: FileSystem> CmdInput<'a, T> {
             prev_cursor_pos_x: 0,
             last_key_was_motion: false,
 
-            tab_handler: TabHandler::new(file_system),
+            tab_handler: TabHandler::new(),
         }
     }
 
@@ -162,16 +161,9 @@ impl<'a, T: FileSystem> CmdInput<'a, T> {
     }
 
     pub fn get_cmd(&self) -> Vec<String> {
-        let mut res = vec![];
-        let tokens = Token::parse_input(&self.input);
-        res.reserve(tokens.len());
-        for t in tokens {
-            res.push(t.contents);
-        }
-
-        if self.input.len() > 1 {
-            cmd_args.push(String::from_iter(current_arg.iter()));
-        }
-        cmd_args
+        Token::parse_input(&self.input)
+            .into_iter()
+            .map(|t| t.contents)
+            .collect()
     }
 }
