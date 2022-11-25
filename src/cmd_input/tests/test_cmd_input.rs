@@ -5,7 +5,6 @@ mod cmd_input_tests {
     use derive_more::Display;
     use lazy_static::lazy_static;
     use termion::event::Key;
-    use vfs::MemoryFS;
 
     use crate::cmd_input::DetectCursorPosAlias;
     use crate::fixture::raw_tty_emulator::RawTTYEmulator;

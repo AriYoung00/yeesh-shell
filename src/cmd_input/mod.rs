@@ -1,9 +1,7 @@
 mod cmd_input;
 
 #[cfg(test)]
-mod test_cmd_input;
-mod test_tab_handler;
-mod test_token;
+mod tests;
 
 mod suggester;
 mod tab_handler;
