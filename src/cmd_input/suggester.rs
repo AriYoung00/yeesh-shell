@@ -3,21 +3,21 @@ use std::path::Path;
 
 use filesystem::{DirEntry, FileSystem};
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Suggestion {
-    pub replacement: String,
-    is_prefix:       bool,
+    pub replacement:      String,
+    pub(crate) is_prefix: bool,
 }
 
 impl Ord for Suggestion {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.is_prefix.cmp(&other.is_prefix)
+        self.is_prefix.cmp(&other.is_prefix).reverse()
     }
 }
 
 impl PartialOrd for Suggestion {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(other.is_prefix.cmp(&other.is_prefix))
+        Some(self.cmp(other))
     }
 }
 
@@ -25,6 +25,7 @@ pub trait Suggester {
     fn get_suggestions(&self, prefix: &str) -> Vec<Suggestion>;
 }
 
+#[derive(Clone)]
 pub struct FileSystemSuggester<T>
 where
     T: FileSystem,
@@ -39,7 +40,7 @@ impl<T: FileSystem> FileSystemSuggester<T> {
 
     /// Return a list of files in `path` whose name `search_str` is a substring of
     /// `search_str` should describe a path in the [FileSystem] `self.filesystem`
-    fn get_suggestions(&self, path: &Path, search_str: &str) -> Vec<Suggestion> {
+    fn _get_suggestions(&self, path: &Path, search_str: &str) -> Vec<Suggestion> {
         self.filesystem
             .read_dir(path)
             .unwrap()
@@ -76,6 +77,6 @@ impl<T: FileSystem> FileSystemSuggester<T> {
 impl<T: FileSystem> Suggester for FileSystemSuggester<T> {
     fn get_suggestions(&self, prefix: &str) -> Vec<Suggestion> {
         let (search_path, search_str) = self.get_search_params(prefix);
-        self.get_suggestions(&search_path, &search_str)
+        self._get_suggestions(&search_path, &search_str)
     }
 }

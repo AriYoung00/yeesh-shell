@@ -4,7 +4,6 @@
 #![allow(dead_code)]
 #![allow(unused_macros)]
 #![allow(non_camel_case_types)]
-extern crate core;
 
 mod cmd_input;
 mod error;

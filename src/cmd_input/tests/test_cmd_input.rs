@@ -3,7 +3,6 @@ mod cmd_input_tests {
     use std::io;
 
     use derive_more::Display;
-    use lazy_static::lazy_static;
     use termion::event::Key;
 
     use crate::cmd_input::DetectCursorPosAlias;
@@ -38,16 +37,12 @@ mod cmd_input_tests {
     }
 
     #[cfg(test)]
-    lazy_static! {
-        static ref THROWAWAY_FS: MemoryFS = MemoryFS::new();
-    }
-    #[cfg(test)]
-    fn setup() -> (CmdInput<'static, MemoryFS>, RawTTYEmulator) {
-        (CmdInput::new(&THROWAWAY_FS), RawTTYEmulator::new())
+    fn setup() -> (CmdInput, RawTTYEmulator) {
+        (CmdInput::new(), RawTTYEmulator::new())
     }
 
     #[cfg(test)]
-    fn insert_word(cmd: &mut CmdInput<MemoryFS>, out: &mut RawTTYEmulator, word: &str) {
+    fn insert_word(cmd: &mut CmdInput, out: &mut RawTTYEmulator, word: &str) {
         for c in word.chars() {
             cmd.insert(Key::Char(c));
             cmd.render_line(out, 0).expect("Unable to render word");
