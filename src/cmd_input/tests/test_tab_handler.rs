@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tab_handler_tests {
-    use crate::cmd_input::suggester::{Suggester, Suggestion};
+    use crate::cmd_input::suggester::SuggestionType::File;
+    use crate::cmd_input::suggester::{Suggester, Suggestion, SuggestionType};
     use crate::cmd_input::TabHandler;
 
     #[derive(Clone)]
@@ -9,16 +10,20 @@ mod tab_handler_tests {
         get_suggestion_cnt: usize,
     }
 
+    impl From<(&'static str, bool, SuggestionType)> for Suggestion {
+        fn from((replacement, is_prefix, s_type): (&'static str, bool, SuggestionType)) -> Self {
+            Suggestion {
+                replacement: replacement.to_string(),
+                is_prefix,
+                s_type,
+            }
+        }
+    }
+
     impl TestSuggester {
-        pub fn new(suggestion_pairs: Vec<(&'static str, bool)>) -> Self {
+        pub fn new(suggestions: Vec<(&'static str, bool, SuggestionType)>) -> Self {
             TestSuggester {
-                suggestions:        suggestion_pairs
-                    .into_iter()
-                    .map(|(x, y)| Suggestion {
-                        replacement: x.to_string(),
-                        is_prefix:   y,
-                    })
-                    .collect(),
+                suggestions:        suggestions.into_iter().map(|x| x.into()).collect(),
                 get_suggestion_cnt: 0,
             }
         }
@@ -43,7 +48,7 @@ mod tab_handler_tests {
 
     #[test]
     fn test_suggestion_cache() {
-        let suggestions = vec![("hello", true), ("there", false)];
+        let suggestions = vec![("hello", true, File), ("there", false, File)];
         let suggester = TestSuggester::new(suggestions.clone());
         let mut handler = setup(vec![Box::new(suggester)]);
 
@@ -67,7 +72,7 @@ mod tab_handler_tests {
 
     #[test]
     fn test_suggestions_loop() {
-        let suggestions = vec![("hello", true), ("there", false)];
+        let suggestions = vec![("hello", true, File), ("there", false, File)];
         let suggester = TestSuggester::new(suggestions.clone());
         let mut handler = setup(vec![Box::new(suggester)]);
 

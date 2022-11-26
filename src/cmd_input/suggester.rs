@@ -2,11 +2,34 @@ use std::cmp::Ordering;
 use std::path::Path;
 
 use filesystem::{DirEntry, FileSystem};
+use itertools::Itertools;
+
+use crate::cmd_input::suggester::SuggestionType::{Directory, File};
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum SuggestionType {
+    Directory,
+    File,
+    /// an executable in $PATH
+    PathExecutable,
+}
+
+impl SuggestionType {
+    pub fn from_pathbuf(path: &PathBuf, filesystem: &impl FileSystem) -> Self {
+        if filesystem.is_dir(path) {
+            Directory
+        }
+        else {
+            File
+        }
+    }
+}
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Suggestion {
     pub replacement:      String,
-    pub(crate) is_prefix: bool,
+    pub(super) is_prefix: bool,
+    pub s_type:           SuggestionType,
 }
 
 impl Ord for Suggestion {
