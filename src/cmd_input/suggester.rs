@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
-use std::path::Path;
+use std::cmp::Ordering::Equal;
+use std::path::{Path, PathBuf};
 
 use filesystem::{DirEntry, FileSystem};
 use itertools::Itertools;
@@ -34,7 +35,13 @@ pub struct Suggestion {
 
 impl Ord for Suggestion {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.is_prefix.cmp(&other.is_prefix).reverse()
+        let res = self.is_prefix.cmp(&other.is_prefix).reverse();
+        if res == Equal {
+            self.replacement.cmp(&other.replacement)
+        }
+        else {
+            res
+        }
     }
 }
 
@@ -64,38 +71,55 @@ impl<T: FileSystem> FileSystemSuggester<T> {
         FileSystemSuggester { filesystem }
     }
 
-    /// Return a list of files in `path` whose name `search_str` is a substring of
-    /// `search_str` should describe a path in the [FileSystem] `self.filesystem`
-    fn _get_suggestions(&self, path: &Path, search_str: &str) -> Vec<Suggestion> {
-        self.filesystem
-            .read_dir(path)
-            .unwrap()
-            .filter_map(|x| {
-                let file_name: String = x.unwrap().file_name().to_string_lossy().into();
-                if file_name.contains(search_str) {
-                    Some(Suggestion {
-                        replacement: path.to_string_lossy().to_string() + &file_name,
-                        is_prefix:   file_name.starts_with(search_str),
-                    })
-                }
-                else {
-                    None
-                }
+    fn get_suggestion_from_file(&self, file: &impl DirEntry, path: &Path, search_str: &str) -> Option<Suggestion> {
+        let file_name: String = file.file_name().to_string_lossy().into();
+        if file_name.contains(search_str) {
+            let s_type = SuggestionType::from_pathbuf(&file.path(), &self.filesystem);
+            let replacement_suffix = if s_type == Directory {
+                file_name + "/"
+            }
+            else {
+                file_name
+            };
+
+            Some(Suggestion {
+                replacement: path.to_string_lossy().to_string() + &replacement_suffix,
+                is_prefix: replacement_suffix.starts_with(search_str),
+                s_type,
             })
-            .collect()
+        }
+        else {
+            None
+        }
     }
 
-    fn get_search_params(&self, prefix: &str) -> (Box<Path>, String) {
+    /// Return a list of files in `path` whose name `search_str` is a substring of
+    /// `search_str` should describe a path in the [FileSystem] `self.filesystem`
+    fn _get_suggestions(&self, path: &Path, search_str: &str) -> Option<Vec<Suggestion>> {
+        Some(
+            self.filesystem
+                .read_dir(path)
+                .ok()?
+                .filter_map(|x| self.get_suggestion_from_file(&x.unwrap(), path, search_str))
+                .sorted()
+                .collect(),
+        )
+    }
+
+    pub(super) fn get_search_params(&self, prefix: &str) -> (Box<Path>, String) {
         let path = Path::new(prefix);
-        if self.filesystem.is_dir(path) {
+        if self.filesystem.is_dir(path) && prefix.ends_with('/') {
             (path.into(), "".to_string())
         }
         else {
-            let last_slash_idx = prefix.rfind("/").unwrap_or(0);
-            let prefix = &prefix[0..last_slash_idx];
+            let last_slash_idx = match prefix.rfind('/') {
+                Some(i) => i + 1,
+                None => 0,
+            };
+            let new_prefix = &prefix[..last_slash_idx];
             let suffix = &prefix[last_slash_idx..];
 
-            (Path::new(prefix).into(), suffix.to_string())
+            (Path::new(new_prefix).into(), suffix.to_string())
         }
     }
 }
@@ -103,7 +127,7 @@ impl<T: FileSystem> FileSystemSuggester<T> {
 impl<T: FileSystem> Suggester for FileSystemSuggester<T> {
     fn get_suggestions(&mut self, prefix: &str) -> Vec<Suggestion> {
         let (search_path, search_str) = self.get_search_params(prefix);
-        self._get_suggestions(&search_path, &search_str)
+        self._get_suggestions(&search_path, &search_str).unwrap_or_default()
     }
 
     #[cfg(test)]
