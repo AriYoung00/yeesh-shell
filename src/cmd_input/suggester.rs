@@ -22,7 +22,10 @@ impl PartialOrd for Suggestion {
 }
 
 pub trait Suggester {
-    fn get_suggestions(&self, prefix: &str) -> Vec<Suggestion>;
+    fn get_suggestions(&mut self, prefix: &str) -> Vec<Suggestion>;
+
+    #[cfg(test)]
+    fn get_get_suggestion_count(&self) -> usize;
 }
 
 #[derive(Clone)]
@@ -75,8 +78,13 @@ impl<T: FileSystem> FileSystemSuggester<T> {
 }
 
 impl<T: FileSystem> Suggester for FileSystemSuggester<T> {
-    fn get_suggestions(&self, prefix: &str) -> Vec<Suggestion> {
+    fn get_suggestions(&mut self, prefix: &str) -> Vec<Suggestion> {
         let (search_path, search_str) = self.get_search_params(prefix);
         self._get_suggestions(&search_path, &search_str)
+    }
+
+    #[cfg(test)]
+    fn get_get_suggestion_count(&self) -> usize {
+        0
     }
 }
