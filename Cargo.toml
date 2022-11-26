@@ -9,6 +9,7 @@ edition = "2021"
 termion = "1.5.6"
 regex = "1.6.0"
 filesystem = "0.4.4"
+itertools = "0.10.5"
 
 [dev-dependencies]
 pretty_assertions = "1.2.1"
