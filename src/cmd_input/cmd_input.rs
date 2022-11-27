@@ -1,6 +1,7 @@
 use std::io;
 use std::io::Write;
 
+use filesystem::FileSystem;
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::{clear, cursor};
@@ -60,7 +61,7 @@ where
 }
 
 impl CmdInput {
-    pub fn new() -> CmdInput {
+    pub fn new<T: FileSystem + 'static>(fs: T) -> CmdInput {
         CmdInput {
             input: vec![],
             index: 0,
@@ -68,7 +69,7 @@ impl CmdInput {
             prev_cursor_pos_x: 0,
             last_key_was_motion: false,
 
-            tab_handler: TabHandler::new(),
+            tab_handler: TabHandler::new(fs),
         }
     }
 

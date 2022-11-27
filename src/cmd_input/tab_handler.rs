@@ -1,4 +1,6 @@
-use crate::cmd_input::suggester::{Suggester, Suggestion};
+use filesystem::FileSystem;
+
+use crate::cmd_input::suggester::{FileSystemSuggester, Suggester, Suggestion};
 
 pub struct TabHandler {
     suggesters:  Vec<Box<dyn Suggester>>,
@@ -7,10 +9,10 @@ pub struct TabHandler {
 }
 
 impl TabHandler {
-    pub fn new() -> Self {
+    pub fn new<T: FileSystem + 'static>(fs: T) -> Self {
         let tmp = vec![];
         TabHandler {
-            suggesters:  vec![],
+            suggesters:  vec![Box::new(FileSystemSuggester::new(fs))],
             last_input:  "poqjkfdpqokjpioejq".to_string(),
             cached_iter: Box::new(tmp.into_iter().cycle()),
         }

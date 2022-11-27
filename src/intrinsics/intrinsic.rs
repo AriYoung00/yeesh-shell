@@ -54,10 +54,5 @@ pub const INTRINSICS: [Intrinsic; 2] = [
 ];
 
 pub fn find_intrinsic(cmd: &String) -> Option<&Intrinsic> {
-    for intrinsic in INTRINSICS.iter() {
-        if intrinsic.command == cmd {
-            return Some(intrinsic);
-        }
-    }
-    None
+    INTRINSICS.iter().find(|&intrinsic| intrinsic.command == cmd)
 }

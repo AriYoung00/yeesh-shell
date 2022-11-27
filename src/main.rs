@@ -65,7 +65,7 @@ fn main() {
 
     let filesystem = OsFileSystem::new();
 
-    let mut cmd_input = CmdInput::new();
+    let mut cmd_input = CmdInput::new(filesystem);
     let mut status = ExitStatus::from_raw(0);
     let mut prompt_len: usize = print_prompt(&status, &mut stdout).unwrap();
     stdout.flush().unwrap();

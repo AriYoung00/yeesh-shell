@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tab_handler_tests {
+    use filesystem::FakeFileSystem;
+
     use crate::cmd_input::suggester::SuggestionType::File;
     use crate::cmd_input::suggester::{Suggester, Suggestion, SuggestionType};
     use crate::cmd_input::TabHandler;
@@ -41,7 +43,7 @@ mod tab_handler_tests {
     }
 
     fn setup(suggesters: Vec<Box<dyn Suggester>>) -> TabHandler {
-        let mut handler = TabHandler::new();
+        let mut handler = TabHandler::new(FakeFileSystem::new());
         handler.set_suggesters(suggesters);
         handler
     }

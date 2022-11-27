@@ -3,6 +3,7 @@ mod cmd_input_tests {
     use std::io;
 
     use derive_more::Display;
+    use filesystem::FakeFileSystem;
     use termion::event::Key;
 
     use crate::cmd_input::DetectCursorPosAlias;
@@ -38,7 +39,7 @@ mod cmd_input_tests {
 
     #[cfg(test)]
     fn setup() -> (CmdInput, RawTTYEmulator) {
-        (CmdInput::new(), RawTTYEmulator::new())
+        (CmdInput::new(FakeFileSystem::new()), RawTTYEmulator::new())
     }
 
     #[cfg(test)]
