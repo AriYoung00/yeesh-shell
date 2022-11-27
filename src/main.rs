@@ -42,10 +42,10 @@ fn handle_command(stdout: &mut RawTerminal<Stdout>, cmd_input: &mut CmdInput) ->
     let cmd_args = cmd_input.get_cmd();
     if !cmd_args.is_empty() && let Some(intrinsic) = find_intrinsic(&cmd_args[0]) {
         if cmd_args.len() == 2 && (cmd_args[1] == "--help" || cmd_args[1] == "-h") {
-            println!("{}\r", intrinsic.description);
+            println!("{}\r", intrinsic.get_description());
             status = ExitStatus::from_raw(0);
         } else {
-            match (intrinsic.handler)(&cmd_args[1..]) {
+            match intrinsic.handler(&cmd_args[1..]) {
                 Ok(output) => {
                     write!(stdout, "{}", output).unwrap();
                     status = ExitStatus::from_raw(0);
@@ -56,7 +56,7 @@ fn handle_command(stdout: &mut RawTerminal<Stdout>, cmd_input: &mut CmdInput) ->
                 }
             }
         }
-        if intrinsic.command == "exit" {
+        if intrinsic.get_command() == "exit" {
             return None;
         }
     }
