@@ -13,7 +13,7 @@ mod prompt;
 
 use std::env;
 use std::io;
-use std::io::{stderr, stdin, stdout, Write};
+use std::io::{stderr, stdin, stdout, Stdout, Write};
 use std::os::unix::process::ExitStatusExt;
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus};
@@ -24,7 +24,7 @@ use prompt::print_prompt;
 use termion::color;
 use termion::event::Key;
 use termion::input::TermRead;
-use termion::raw::IntoRawMode;
+use termion::raw::{IntoRawMode, RawTerminal};
 
 use crate::cmd_input::CmdInput;
 
@@ -57,6 +57,47 @@ fn handle_cd(cmd_args: &[String]) -> io::Result<ExitStatus> {
     Ok(ExitStatus::from_raw(0))
 }
 
+fn handle_command(stdout: &mut RawTerminal<Stdout>, cmd_input: &mut CmdInput) -> Option<ExitStatus> {
+    let status: ExitStatus;
+
+    let cmd_args = cmd_input.get_cmd();
+    if !cmd_args.is_empty() && let Some(intrinsic) = find_intrinsic(&cmd_args[0]) {
+        if cmd_args.len() == 2 && (cmd_args[1] == "--help" || cmd_args[1] == "-h") {
+            println!("{}\r", intrinsic.description);
+            status = ExitStatus::from_raw(0);
+        } else {
+            match (intrinsic.handler)(&cmd_args[1..]) {
+                Ok(output) => {
+                    write!(stdout, "{}", output).unwrap();
+                    status = ExitStatus::from_raw(0);
+                }
+                Err(err) => {
+                    write!(stderr(), "{}", err).unwrap();
+                    status = ExitStatus::from_raw(1);
+                }
+            }
+        }
+        if intrinsic.command == "exit" {
+            return None;
+        }
+    }
+    else if !cmd_args.is_empty() {
+        stdout.suspend_raw_mode().unwrap();
+        if let Ok(mut child) = dispatch_command(cmd_args)
+            && let Ok(exit_status) = child.wait() {
+            status = exit_status;
+        } else {
+            status = ExitStatus::from_raw(1);
+        }
+        stdout.activate_raw_mode().unwrap();
+    }
+    else {
+        status = ExitStatus::from_raw(0);
+    }
+
+    Some(status)
+}
+
 fn main() {
     let mut stdout = stdout().into_raw_mode().unwrap();
     let stdin = stdin();
@@ -75,38 +116,11 @@ fn main() {
             match val {
                 Key::Char('\n') => {
                     write!(stdout, "\r\n").unwrap();
-                    let cmd_args = cmd_input.get_cmd();
-                    if !cmd_args.is_empty() && let Some(intrinsic) = find_intrinsic(&cmd_args[0]) {
-                        if cmd_args.len() == 2 && (cmd_args[1] == "--help" || cmd_args[1] == "-h") {
-                            println!("{}\r", intrinsic.description);
-                            status = ExitStatus::from_raw(0);
-                        }
-                        else {
-                            match (intrinsic.handler)(&cmd_args[1..]) {
-                                Ok(output) => {
-                                    write!(stdout, "{}", output).unwrap();
-                                    status = ExitStatus::from_raw(0);
-                                }
-                                Err(err) => {
-                                    write!(stderr(), "{}", err).unwrap();
-                                    status = ExitStatus::from_raw(1);
-                                }
-                            }
-                        }
-                        if intrinsic.command == "exit" {
-                            break;
-                        }
+                    if let Some(new_status) = handle_command(&mut stdout, &mut cmd_input) {
+                        status = new_status;
                     }
-                    else if !cmd_args.is_empty() {
-                        stdout.suspend_raw_mode().unwrap();
-                        if let Ok(mut child) = dispatch_command(cmd_args)
-                            && let Ok(exit_status) = child.wait() {
-                            status = exit_status;
-                        }
-                        else {
-                            status = ExitStatus::from_raw(1);
-                        }
-                        stdout.activate_raw_mode().unwrap();
+                    else {
+                        break;
                     }
 
                     cmd_input.clear();
