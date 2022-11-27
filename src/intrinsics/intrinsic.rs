@@ -26,7 +26,7 @@ impl PartialEq for &dyn Intrinsic {
     }
 }
 
-struct ChangeDirectory<T: FileSystem + Sync + Send> {
+pub(crate) struct ChangeDirectory<T: FileSystem + Sync + Send> {
     fs: T,
 }
 
@@ -46,16 +46,22 @@ impl<T: FileSystem + Sync + Send> Intrinsic for ChangeDirectory<T> {
     }
 
     fn handler(&self, args: &[String]) -> Result<String, String> {
-        let path = match args.len() {
-            0 => "~",
-            1 => args[0].as_str(),
+        let mut path = match args.len() {
+            0 => "~".to_string(),
+            1 => args[0].clone(),
             _ => {
                 return Err("cd: too many arguments".to_string());
             }
-        }
-        .replace("~", env::var("HOME").or(Err("HOME not set"))?.as_str());
+        };
 
-        if let Ok(()) = env::set_current_dir(&path) {
+        if path.starts_with('~') {
+            path = env::var("HOME").or(Err("HOME not set"))? + &path[1..];
+        }
+
+        if self.fs.is_file(&path) {
+            Err(format!("cd: '{}' is not a directory", path))
+        }
+        else if let Ok(()) = self.fs.set_current_dir(&path) {
             Ok("".to_string())
         }
         else {
@@ -64,7 +70,7 @@ impl<T: FileSystem + Sync + Send> Intrinsic for ChangeDirectory<T> {
     }
 }
 
-struct ExitShell(());
+pub(crate) struct ExitShell(());
 impl Intrinsic for ExitShell {
     fn get_command(&self) -> &'static str {
         "exit"
