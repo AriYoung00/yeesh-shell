@@ -11,11 +11,9 @@ mod fixture;
 mod intrinsics;
 mod prompt;
 
-use std::env;
 use std::io;
 use std::io::{stderr, stdin, stdout, Stdout, Write};
 use std::os::unix::process::ExitStatusExt;
-use std::path::Path;
 use std::process::{Child, Command, ExitStatus};
 
 use filesystem::OsFileSystem;
@@ -36,25 +34,6 @@ fn dispatch_command(cmd_args: Vec<String>) -> io::Result<Child> {
     Command::new(&cmd_args[0])
         .args(if cmd_args.len() > 1 { &cmd_args[1..] } else { &[] })
         .spawn()
-}
-
-fn handle_cd(cmd_args: &[String]) -> io::Result<ExitStatus> {
-    if cmd_args.len() == 0 {
-        let path = Path::new("~");
-        env::set_current_dir(&path)?;
-    }
-    else {
-        match cmd_args[0].chars().nth(0).unwrap() {
-            '/' | '~' => env::set_current_dir(&cmd_args[0])?,
-            _ => {
-                let mut path = env::current_dir()?;
-                path.push(cmd_args[0].as_str());
-                env::set_current_dir(&path)?;
-            }
-        }
-    }
-
-    Ok(ExitStatus::from_raw(0))
 }
 
 fn handle_command(stdout: &mut RawTerminal<Stdout>, cmd_input: &mut CmdInput) -> Option<ExitStatus> {
