@@ -3,7 +3,7 @@ mod cmd_input_tests {
     use std::io;
 
     use derive_more::Display;
-    use filesystem::FakeFileSystem;
+    use filesystem::{FakeFileSystem, FileSystem};
     use termion::event::Key;
 
     use crate::cmd_input::DetectCursorPosAlias;
@@ -40,6 +40,12 @@ mod cmd_input_tests {
     #[cfg(test)]
     fn setup() -> (CmdInput, RawTTYEmulator) {
         (CmdInput::new(FakeFileSystem::new()), RawTTYEmulator::new())
+    }
+
+    #[cfg(test)]
+    fn setup_with_fs() -> (CmdInput, RawTTYEmulator, FakeFileSystem) {
+        let fs = FakeFileSystem::new();
+        (CmdInput::new(fs.clone()), RawTTYEmulator::new(), fs)
     }
 
     #[cfg(test)]
@@ -89,5 +95,18 @@ mod cmd_input_tests {
 
         assert!(cmd.get_cmd().is_empty());
         assert!(cmd.get_input().is_empty());
+    }
+
+    #[test]
+    fn test_cmd_input_tab() {
+        let (mut cmd, mut out, fs) = setup_with_fs();
+
+        fs.create_dir_all("/test/dir").unwrap();
+        insert_word(&mut cmd, &mut out, "te");
+        cmd.insert(Key::Char('\t'));
+        cmd.render_line(&mut out, 0).expect("Unable to render line");
+        assert_eq!(out.get_line_str(), "test/");
+        println!("out is string '{}'", out.get_line_str());
+        assert_eq!(out.get_cursor_pos().0, 4_usize);
     }
 }
