@@ -9,15 +9,15 @@ mod token_tests {
         let input1: Vec<char> = "one two".chars().collect();
         let tokens1 = Token::parse_input(&input1);
         assert_eq!(tokens1.len(), 2);
-        assert_eq!(tokens1[0].contents, "one");
-        assert_eq!(tokens1[1].contents, "two");
+        assert_eq!(tokens1[0].get_contents(), "one");
+        assert_eq!(tokens1[1].get_contents(), "two");
 
         let input2 = "hello there how are you today THERE ARE CAPS, this is a very long string!??)(*#)!@(*#!";
         let tokens2 = Token::parse_input(&input2.chars().collect::<Vec<char>>());
         let words: Vec<&str> = input2.split(' ').collect();
         assert_eq!(words.len(), tokens2.len());
         for (idx, word) in words.iter().enumerate() {
-            assert_eq!(*word, tokens2[idx].contents.as_str());
+            assert_eq!(*word, tokens2[idx].get_contents());
         }
     }
 
@@ -26,19 +26,19 @@ mod token_tests {
         let input1 = "\"hello there\" buddy".chars().collect();
         let tokens1 = Token::parse_input(&input1);
         assert_eq!(tokens1.len(), 2);
-        assert_eq!(tokens1[0].contents, "hello there");
+        assert_eq!(tokens1[0].get_contents(), "hello there");
         assert!(tokens1[0].get_is_quoted());
         assert_eq!(tokens1[0].get_quote_char(), '"');
-        assert_eq!(tokens1[1].contents, "buddy");
+        assert_eq!(tokens1[1].get_contents(), "buddy");
         assert!(!tokens1[1].get_is_quoted());
 
         let input2 = "'single quotes' now".chars().collect();
         let tokens2 = Token::parse_input(&input2);
         assert_eq!(tokens2.len(), 2);
-        assert_eq!(tokens2[0].contents, "single quotes");
+        assert_eq!(tokens2[0].get_contents(), "single quotes");
         assert!(tokens2[0].get_is_quoted());
         assert_eq!(tokens2[0].get_quote_char(), '\'');
-        assert_eq!(tokens2[1].contents, "now");
+        assert_eq!(tokens2[1].get_contents(), "now");
         assert!(!tokens2[1].get_is_quoted());
     }
 
@@ -97,7 +97,7 @@ mod token_tests {
     #[test]
     fn test_simple_getters() {
         let token = Token::new("hello".to_string(), false, '"', 0, 4);
-        assert_eq!(token.contents, "hello");
+        assert_eq!(token.get_contents(), "hello");
         assert!(!token.get_is_quoted());
         assert_eq!(token.get_quote_char(), '"');
         assert_eq!(token.get_start_pos(), 0);

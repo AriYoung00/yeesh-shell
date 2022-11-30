@@ -1,8 +1,8 @@
 #[derive(Clone, Debug)]
 pub struct Token {
-    pub contents: String,
-    is_quoted:    bool,
-    quote_char:   char,
+    contents:   String,
+    is_quoted:  bool,
+    quote_char: char,
 
     start_pos: usize,
     end_pos:   usize,
@@ -102,5 +102,14 @@ impl Token {
 
     pub fn get_end_pos(&self) -> usize {
         self.end_pos
+    }
+
+    pub fn get_contents(&self) -> &str {
+        &self.contents
+    }
+
+    pub fn set_contents(&mut self, contents: String) {
+        self.end_pos += (contents.len() - self.contents.len()) + 1;
+        self.contents = contents;
     }
 }
