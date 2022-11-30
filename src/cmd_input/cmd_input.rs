@@ -113,14 +113,17 @@ impl CmdInput {
     pub fn insert(&mut self, key: Key) {
         match key {
             Key::Char('\t') => {
+                // self.index reflects the space that's added at the end of the input sequence
+                let idx_corrected = self.index - 1;
                 let mut tokens = Token::parse_input(&self.input);
                 let active_token = tokens
                     .iter_mut()
-                    .find(|t| t.get_end_pos() <= self.index && t.get_end_pos() >= self.index);
+                    .find(|t| t.get_end_pos() <= idx_corrected && t.get_end_pos() >= idx_corrected);
 
                 if let Some(token) = active_token {
                     if let Some(suggestion) = self.tab_handler.get_suggestion(&token.contents) {
                         token.contents = suggestion;
+                        self.input = Token::assemble_tokens(&tokens);
                     }
                 }
             }
