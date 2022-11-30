@@ -10,6 +10,9 @@ termion = "2.0.1"
 regex = "1.6.0"
 filesystem = "0.4.4"
 itertools = "0.10.5"
+log4rs = "1.2.0"
+log = "0.4.17"
+serde_yaml = "0.9.14"
 lazy_static = "1.4.0"
 
 [dev-dependencies]
