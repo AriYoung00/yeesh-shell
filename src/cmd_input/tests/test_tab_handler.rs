@@ -65,6 +65,7 @@ mod tab_handler_tests {
             handler.get_suggesters()[0].get_get_suggestion_count()
         );
 
+        handler.refresh();
         handler.get_suggestion(b);
         assert_eq!(
             suggest_count_save + 1,

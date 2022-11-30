@@ -50,6 +50,8 @@ pub struct CmdInput {
     last_key_was_motion: bool,
 
     tab_handler: TabHandler,
+
+    last_key_was_tab: bool,
 }
 
 #[inline]
@@ -70,7 +72,8 @@ impl CmdInput {
             prev_cursor_pos_x: 0,
             last_key_was_motion: false,
 
-            tab_handler: TabHandler::new(fs),
+            tab_handler:      TabHandler::new(fs),
+            last_key_was_tab: false,
         }
     }
 
@@ -112,6 +115,7 @@ impl CmdInput {
     }
 
     pub fn insert(&mut self, key: Key) {
+        debug!("Inserting key '{:?}'", key);
         match key {
             Key::Char('\t') => {
                 // self.index reflects the space that's added at the end of the input sequence
@@ -128,14 +132,20 @@ impl CmdInput {
                 );
 
                 if let Some(token) = active_token {
-                    if let Some(suggestion) = self.tab_handler.get_suggestion(&token.contents) {
-                        token.contents = suggestion;
+                    if !self.last_key_was_tab {
+                        self.tab_handler.refresh();
+                    }
+                    if let Some(suggestion) = self.tab_handler.get_suggestion(&token.get_contents().to_string()) {
+                        info!("Found suggestion: '{}'", suggestion);
+                        token.set_contents(suggestion);
+                        self.index = token.get_end_pos();
                         self.input = Token::assemble_tokens(&tokens);
                     }
                     else {
                         warn!("Unable to find suggestion");
                     }
                 }
+                self.last_key_was_tab = true;
             }
 
             Key::Char(c) => {
@@ -145,6 +155,7 @@ impl CmdInput {
                     self.input.push(' ');
                 }
                 self.last_key_was_motion = false;
+                self.last_key_was_tab = false;
             }
             Key::Backspace => {
                 if self.index > 0 {
@@ -152,6 +163,7 @@ impl CmdInput {
                     self.input.remove(self.index);
                 }
                 self.last_key_was_motion = false;
+                self.last_key_was_tab = false;
             }
             Key::Left => {
                 if self.index != 0 {
