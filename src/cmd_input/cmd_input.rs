@@ -119,7 +119,13 @@ impl CmdInput {
         match key {
             Key::Char('\t') => {
                 // self.index reflects the space that's added at the end of the input sequence
-                let idx_corrected = self.index - 1;
+                let idx_corrected = if self.index == self.input.len() {
+                    self.index - 1
+                }
+                else {
+                    self.index
+                };
+
                 let mut tokens = Token::parse_input(&self.input);
                 let active_token = tokens
                     .iter_mut()
@@ -192,7 +198,7 @@ impl CmdInput {
         debug!("Assembling tokens");
         Token::parse_input(&self.input)
             .into_iter()
-            .map(|t| t.contents)
+            .map(|t| t.get_contents().to_string())
             .collect()
     }
 }

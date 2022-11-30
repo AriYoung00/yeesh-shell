@@ -115,10 +115,10 @@ impl<T: FileSystem> FileSystemSuggester<T> {
         )
     }
 
-    pub(super) fn get_search_params(&self, prefix: &str) -> (Box<Path>, String) {
+    pub(super) fn get_search_params(&self, prefix: &str) -> (String, String) {
         let path = Path::new(prefix);
         if self.filesystem.is_dir(path) && prefix.ends_with('/') {
-            (path.into(), "".to_string())
+            (path.to_string_lossy().to_string(), "".to_string())
         }
         else {
             let last_slash_idx = match prefix.rfind('/') {
@@ -128,7 +128,7 @@ impl<T: FileSystem> FileSystemSuggester<T> {
             let new_prefix = &prefix[..last_slash_idx];
             let suffix = &prefix[last_slash_idx..];
 
-            (Path::new(new_prefix).into(), suffix.to_string())
+            (new_prefix.to_string(), suffix.to_string())
         }
     }
 }

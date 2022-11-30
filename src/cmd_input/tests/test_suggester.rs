@@ -59,15 +59,15 @@ mod suggester_tests {
         create_directories(&fs, vec!["hello"]).unwrap();
 
         let (mut path, mut search_str) = suggester.get_search_params("");
-        assert_eq!(path, Path::new("").into());
+        assert_eq!(path, "");
         assert_eq!(search_str, "");
 
         (path, search_str) = suggester.get_search_params("he");
-        assert_eq!(path, Path::new("").into());
+        assert_eq!(path, "");
         assert_eq!(search_str, "he");
 
         (path, search_str) = suggester.get_search_params("hello/");
-        assert_eq!(path, Path::new("hello").into());
+        assert_eq!(path, "hello/");
         assert_eq!(search_str, "");
     }
 
