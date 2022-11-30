@@ -104,15 +104,20 @@ impl<T: FileSystem> FileSystemSuggester<T> {
 
     /// Return a list of files in `path` whose name `search_str` is a substring of
     /// `search_str` should describe a path in the [FileSystem] `self.filesystem`
-    fn _get_suggestions(&self, path: &Path, search_str: &str) -> Option<Vec<Suggestion>> {
-        Some(
-            self.filesystem
-                .read_dir(path)
-                .ok()?
-                .filter_map(|x| self.get_suggestion_from_file(&x.unwrap(), path, search_str))
-                .sorted()
-                .collect(),
-        )
+    fn _get_suggestions(&self, path: &str, search_str: &str) -> io::Result<Vec<Suggestion>> {
+        let search_path = if path.is_empty() || path == "./" {
+            self.filesystem.current_dir().unwrap()
+        }
+        else {
+            path.into()
+        };
+
+        Ok(self
+            .filesystem
+            .read_dir(search_path)?
+            .filter_map(|x| self.get_suggestion_from_file(&x.unwrap(), path, search_str))
+            .sorted()
+            .collect())
     }
 
     pub(super) fn get_search_params(&self, prefix: &str) -> (String, String) {
