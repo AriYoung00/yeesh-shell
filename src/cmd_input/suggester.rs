@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::cmp::Ordering::Equal;
+use std::io;
 use std::path::{Path, PathBuf};
 
 use filesystem::{DirEntry, FileSystem};
