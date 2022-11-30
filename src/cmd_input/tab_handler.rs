@@ -37,6 +37,7 @@ impl TabHandler {
                 acc
             });
             suggestions.sort();
+            trace!("Found suggestions: '{:?}'", suggestions);
             self.cached_iter = Box::new(suggestions.into_iter().cycle());
             self.last_input = prefix.clone();
         }

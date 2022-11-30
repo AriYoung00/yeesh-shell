@@ -18,6 +18,7 @@ use std::process::{Child, Command, ExitStatus};
 
 use filesystem::OsFileSystem;
 use intrinsics::find_intrinsic;
+use log::info;
 use prompt::print_prompt;
 use termion::color;
 use termion::event::Key;
@@ -83,7 +84,12 @@ fn main() {
     // write!(stdout, "{}", termion::clear::All).unwrap();
     write!(stdout, "\r\n{}Hello, world!\r\n", color::Fg(color::Red)).unwrap();
 
+    let config_str = include_str!("logger_config.yaml");
+    let config = serde_yaml::from_str(config_str).unwrap();
+    log4rs::init_raw_config(config).unwrap();
     let filesystem = OsFileSystem::new();
+
+    info!("hello world");
 
     let mut cmd_input = CmdInput::new(filesystem);
     let mut status = ExitStatus::from_raw(0);

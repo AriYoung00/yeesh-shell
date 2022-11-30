@@ -2,6 +2,7 @@ use std::io;
 use std::io::Write;
 
 use filesystem::FileSystem;
+use log::{debug, info, trace, warn};
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::{clear, cursor};
@@ -120,10 +121,19 @@ impl CmdInput {
                     .iter_mut()
                     .find(|t| t.get_end_pos() <= idx_corrected && t.get_end_pos() >= idx_corrected);
 
+                trace!(
+                    "Found active token: {:?}, idx_corrected: {}",
+                    active_token,
+                    idx_corrected
+                );
+
                 if let Some(token) = active_token {
                     if let Some(suggestion) = self.tab_handler.get_suggestion(&token.contents) {
                         token.contents = suggestion;
                         self.input = Token::assemble_tokens(&tokens);
+                    }
+                    else {
+                        warn!("Unable to find suggestion");
                     }
                 }
             }
@@ -157,14 +167,17 @@ impl CmdInput {
             }
             _ => {}
         }
+        debug!("Input after processing key: {:?}", self.input);
     }
 
     pub fn clear(&mut self) {
+        debug!("Clearing input");
         self.input.clear();
         self.index = 0;
     }
 
     pub fn get_cmd(&self) -> Vec<String> {
+        debug!("Assembling tokens");
         Token::parse_input(&self.input)
             .into_iter()
             .map(|t| t.contents)

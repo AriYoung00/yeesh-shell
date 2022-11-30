@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use filesystem::{DirEntry, FileSystem};
 use itertools::Itertools;
+use log::{debug, error, info, trace};
 
 use crate::cmd_input::suggester::SuggestionType::{Directory, File};
 
@@ -71,9 +72,16 @@ impl<T: FileSystem> FileSystemSuggester<T> {
         FileSystemSuggester { filesystem }
     }
 
-    fn get_suggestion_from_file(&self, file: &impl DirEntry, path: &Path, search_str: &str) -> Option<Suggestion> {
+    fn get_suggestion_from_file(&self, file: &impl DirEntry, path: &str, search_str: &str) -> Option<Suggestion> {
+        trace!(
+            "Getting suggestion from file '{:?}', path '{}', search_str '{}'",
+            file.file_name().to_string_lossy(),
+            path,
+            search_str
+        );
         let file_name: String = file.file_name().to_string_lossy().into();
         if file_name.contains(search_str) {
+            trace!("File name matches");
             let s_type = SuggestionType::from_pathbuf(&file.path(), &self.filesystem);
             let replacement_suffix = if s_type == Directory {
                 file_name + "/"
@@ -83,12 +91,13 @@ impl<T: FileSystem> FileSystemSuggester<T> {
             };
 
             Some(Suggestion {
-                replacement: path.to_string_lossy().to_string() + &replacement_suffix,
+                replacement: path.to_string() + &replacement_suffix,
                 is_prefix: replacement_suffix.starts_with(search_str),
                 s_type,
             })
         }
         else {
+            trace!("File name does not match");
             None
         }
     }
@@ -126,8 +135,22 @@ impl<T: FileSystem> FileSystemSuggester<T> {
 
 impl<T: FileSystem> Suggester for FileSystemSuggester<T> {
     fn get_suggestions(&mut self, prefix: &str) -> Vec<Suggestion> {
+        debug!("FileSystemSuggester - Getting suggestions for prefix '{}'", prefix);
         let (search_path, search_str) = self.get_search_params(prefix);
-        self._get_suggestions(&search_path, &search_str).unwrap_or_default()
+        trace!(
+            "Got search params, path: '{:?}', search_str: '{}'",
+            search_path,
+            search_str
+        );
+        let suggestions_res = self._get_suggestions(&search_path, &search_str);
+
+        if let Err(e) = &suggestions_res {
+            error!(
+                "Unable to get suggestions from path '{}', search_str '{}', reason: '{}'",
+                search_path, search_str, e
+            );
+        }
+        suggestions_res.unwrap_or_default()
     }
 
     #[cfg(test)]
