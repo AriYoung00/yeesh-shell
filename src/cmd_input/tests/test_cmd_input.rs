@@ -105,8 +105,8 @@ mod cmd_input_tests {
         insert_word(&mut cmd, &mut out, "te");
         cmd.insert(Key::Char('\t'));
         cmd.render_line(&mut out, 0).expect("Unable to render line");
-        assert_eq!(out.get_line_str(), "test/");
+        assert_eq!(out.get_line_str(), "test/ ");
         println!("out is string '{}'", out.get_line_str());
-        assert_eq!(out.get_cursor_pos().0, 4_usize);
+        assert_eq!(out.get_cursor_pos().0, 6_usize);
     }
 }
