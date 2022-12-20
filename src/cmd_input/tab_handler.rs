@@ -7,6 +7,7 @@ pub struct TabHandler {
     suggesters:     Vec<Box<dyn Suggester>>,
     should_refresh: bool,
     cached_iter:    Box<dyn Iterator<Item = Suggestion>>,
+    suggestion_cnt: usize,
 }
 
 impl TabHandler {
@@ -16,6 +17,7 @@ impl TabHandler {
             suggesters:     vec![Box::new(FileSystemSuggester::new(fs))],
             should_refresh: true,
             cached_iter:    Box::new(tmp.into_iter().cycle()),
+            suggestion_cnt: 0,
         }
     }
 
@@ -41,6 +43,7 @@ impl TabHandler {
             });
             suggestions.sort();
             trace!("Found suggestions: '{:?}'", suggestions);
+            self.suggestion_cnt = suggestions.len();
             self.cached_iter = Box::new(suggestions.into_iter().cycle());
             self.should_refresh = false;
         }
@@ -50,5 +53,9 @@ impl TabHandler {
 
     pub fn refresh(&mut self) {
         self.should_refresh = true;
+    }
+
+    pub fn get_suggestion_cnt(&self) -> usize {
+        self.suggestion_cnt
     }
 }

@@ -138,7 +138,7 @@ impl CmdInput {
                 );
 
                 if let Some(token) = active_token {
-                    if !self.last_key_was_tab {
+                    if !self.last_key_was_tab || self.tab_handler.get_suggestion_cnt() <= 1 {
                         self.tab_handler.refresh();
                     }
                     if let Some(suggestion) = self.tab_handler.get_suggestion(&token.get_contents().to_string()) {
