@@ -26,6 +26,7 @@ use termion::input::TermRead;
 use termion::raw::{IntoRawMode, RawTerminal};
 
 use crate::cmd_input::CmdInput;
+use crate::HandleKeyResult::{CommandStatus, Continue, Exit};
 
 fn dispatch_command(cmd_args: Vec<String>) -> io::Result<Child> {
     if cmd_args.is_empty() {
@@ -78,6 +79,38 @@ fn handle_command(stdout: &mut RawTerminal<Stdout>, cmd_input: &mut CmdInput) ->
     Some(status)
 }
 
+enum HandleKeyResult {
+    Continue,
+    CommandStatus(ExitStatus),
+    Exit,
+}
+
+fn handle_key(
+    mut stdout: &mut RawTerminal<Stdout>,
+    mut cmd_input: &mut CmdInput,
+    prompt_len: usize,
+    val: Key,
+) -> HandleKeyResult {
+    match val {
+        Key::Char('\n') => {
+            write!(stdout, "\r\n").unwrap();
+            let rval = if let Some(new_status) = handle_command(&mut stdout, &mut cmd_input) {
+                CommandStatus(new_status)
+            }
+            else {
+                Exit
+            };
+
+            rval
+        }
+        _ => {
+            cmd_input.insert(val);
+            cmd_input.render_line(&mut stdout, prompt_len).unwrap();
+            Continue
+        }
+    }
+}
+
 fn main() {
     let mut stdout = stdout().into_raw_mode().unwrap();
     let stdin = stdin();
@@ -92,29 +125,19 @@ fn main() {
     info!("hello world");
 
     let mut cmd_input = CmdInput::new(filesystem);
-    let mut status = ExitStatus::from_raw(0);
-    let mut prompt_len: usize = print_prompt(&status, &mut stdout).unwrap();
+    let mut prompt_len: usize = print_prompt(&ExitStatus::from_raw(0), &mut stdout).unwrap();
     stdout.flush().unwrap();
 
+    let _ = handle_key(&mut stdout, &mut cmd_input, prompt_len, Key::Char('\t'));
     for c in stdin.keys() {
         if let Ok(val) = c {
-            match val {
-                Key::Char('\n') => {
-                    write!(stdout, "\r\n").unwrap();
-                    if let Some(new_status) = handle_command(&mut stdout, &mut cmd_input) {
-                        status = new_status;
-                    }
-                    else {
-                        break;
-                    }
-
+            match handle_key(&mut stdout, &mut cmd_input, prompt_len, val) {
+                Continue => {}
+                CommandStatus(new_status) => {
                     cmd_input.clear();
-                    prompt_len = print_prompt(&status, &mut stdout).unwrap();
+                    prompt_len = print_prompt(&new_status, &mut stdout).unwrap();
                 }
-                _ => {
-                    cmd_input.insert(val);
-                    cmd_input.render_line(&mut stdout, prompt_len).unwrap();
-                }
+                Exit => break,
             }
         }
 
