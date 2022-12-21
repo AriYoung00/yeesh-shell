@@ -98,7 +98,7 @@ mod cmd_input_tests {
     }
 
     #[test]
-    fn test_cmd_input_tab() {
+    fn test_cmd_input_tab_valid_prefix() {
         let (mut cmd, mut out, fs) = setup_with_fs();
 
         fs.create_dir_all("/test/dir").unwrap();
@@ -107,6 +107,52 @@ mod cmd_input_tests {
         cmd.render_line(&mut out, 0).expect("Unable to render line");
         assert_eq!(out.get_line_str(), "test/ ");
         println!("out is string '{}'", out.get_line_str());
+        assert_eq!(out.get_cursor_pos().0, 6_usize);
+    }
+
+    #[test]
+    fn test_cmd_input_tab_empty_line_empty_dir() {
+        let (mut cmd, mut out, _fs) = setup_with_fs();
+        cmd.insert(Key::Char('\t'));
+        cmd.render_line(&mut out, 0).expect("Unable to render line");
+        assert_eq!(out.get_line_str(), " ");
+        assert_eq!(out.get_cursor_pos().0, 1_usize);
+    }
+
+    #[test]
+    fn test_valid_prefix_cycle() {
+        let (mut cmd, mut out, fs) = setup_with_fs();
+        fs.create_dir_all("/test/dir").unwrap();
+        fs.create_dir_all("/telephone").unwrap();
+        insert_word(&mut cmd, &mut out, "te");
+
+        cmd.insert(Key::Char('\t'));
+        cmd.render_line(&mut out, 0).expect("Unable to render line");
+        assert_eq!(out.get_line_str(), "telephone/ ");
+
+        cmd.insert(Key::Char('\t'));
+        cmd.render_line(&mut out, 0).expect("Unable to render line");
+        assert_eq!(out.get_line_str(), "test/ ");
+
+        cmd.insert(Key::Char('\t'));
+        cmd.render_line(&mut out, 0).expect("Unable to render line");
+        assert_eq!(out.get_line_str(), "telephone/ ");
+    }
+
+    #[test]
+    fn test_input_tab_empty_line_matches_all() {
+        let (mut cmd, mut out, fs) = setup_with_fs();
+        fs.create_dir_all("/test/dir").unwrap();
+        fs.create_dir_all("/telephone").unwrap();
+
+        cmd.insert(Key::Char('\t'));
+        cmd.render_line(&mut out, 0).expect("Unable to render line");
+        assert_eq!(out.get_line_str(), "telephone/ ");
+        assert_eq!(out.get_cursor_pos().0, 11_usize);
+
+        cmd.insert(Key::Char('\t'));
+        cmd.render_line(&mut out, 0).expect("Unable to render line");
+        assert_eq!(out.get_line_str(), "test/ ");
         assert_eq!(out.get_cursor_pos().0, 6_usize);
     }
 }

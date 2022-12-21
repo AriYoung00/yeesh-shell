@@ -109,7 +109,7 @@ impl Token {
     }
 
     pub fn set_contents(&mut self, contents: String) {
-        self.end_pos += (contents.len() - self.contents.len()) + 1;
         self.contents = contents;
+        self.end_pos = self.start_pos + self.contents.len();
     }
 }
